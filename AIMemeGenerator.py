@@ -40,8 +40,14 @@ parser.add_argument("--userprompt", help="A meme subject or concept to send to t
 parser.add_argument("--memecount", help="The number of memes to create. If using arguments and not specified, the default is 1.")
 parser.add_argument("--imageplatform", help="The image platform to use. If using arguments and not specified, the default is 'clipdrop'. Possible options: 'openai', 'stability', 'clipdrop'")
 parser.add_argument("--temperature", help="The temperature to use for the chat bot. If using arguments and not specified, the default is 1.0")
-parser.add_argument("--basicinstructions", help=f"The basic instructions to use for the chat bot. If using arguments and not specified, default will be used.")
-parser.add_argument("--imagespecialinstructions", help=f"The image special instructions to use for the chat bot. If using arguments and not specified, default will be used")
+parser.add_argument(
+    "--basicinstructions",
+    help="The basic instructions to use for the chat bot. If using arguments and not specified, default will be used.",
+)
+parser.add_argument(
+    "--imagespecialinstructions",
+    help="The image special instructions to use for the chat bot. If using arguments and not specified, default will be used",
+)
 # These don't need to be specified as true/false, just specifying them will set them to true
 parser.add_argument("--nouserinput", action='store_true', help="Will prevent any user input prompts, and will instead use default values or other arguments.")
 parser.add_argument("--nofilesave", action='store_true', help="If specified, the meme will not be saved to a file, and only returned as virtual file part of memeResultsDictsList.")
@@ -61,8 +67,8 @@ class NoFontFileError(Exception):
         
 class MissingOpenAIKeyError(Exception):
     def __init__(self, message):
-        full_error_message = f"No OpenAI API key found. OpenAI API key is required - In order to generate text for the meme text and image prompt. Please add your OpenAI API key to the api_keys.ini file."
-        
+        full_error_message = "No OpenAI API key found. OpenAI API key is required - In order to generate text for the meme text and image prompt. Please add your OpenAI API key to the api_keys.ini file."
+
         super().__init__(full_error_message)
         self.simple_message = message    
         
@@ -90,9 +96,7 @@ def construct_system_prompt(basic_instructions, image_special_instructions):
     format_instructions = f'You are a meme generator with the following formatting instructions. Each meme will consist of text that will appear at the top, and an image to go along with it. The user will send you a message with a general theme or concept on which you will base the meme. The user may choose to send you a text saying something like "anything" or "whatever you want", or even no text at all, which you should not take literally, but take to mean they wish for you to come up with something yourself.  The memes don\'t necessarily need to start with "when", but they can. In any case, you will respond with two things: First, the text of the meme that will be displayed in the final meme. Second, some text that will be used as an image prompt for an AI image generator to generate an image to also be used as part of the meme. You must respond only in the format as described next, because your response will be parsed, so it is important it conforms to the format. The first line of your response should be: "Meme Text: " followed by the meme text. The second line of your response should be: "Image Prompt: " followed by the image prompt text.  --- Now here are additional instructions... '
     basicInstructionAppend = f'Next are instructions for the overall approach you should take to creating the memes. Interpret as best as possible: {basic_instructions} | '
     specialInstructionsAppend = f'Next are any special instructions for the image prompt. For example, if the instructions are "the images should be photographic style", your prompt may append ", photograph" at the end, or begin with "photograph of". It does not have to literally match the instruction but interpret as best as possible: {image_special_instructions}'
-    systemPrompt = format_instructions + basicInstructionAppend + specialInstructionsAppend
-    
-    return systemPrompt
+    return format_instructions + basicInstructionAppend + specialInstructionsAppend
 
 # =============================================== Run Checks and Import Configs  ===============================================
 
@@ -146,7 +150,7 @@ def parseBool(string, silent=False):
         else:
             if not silent:
                 raise ValueError(f'Invalid value "{string}". Must be "True" or "False"')
-            elif silent:
+            else:
                 return string
     elif type(string) == bool:
         if string == True:
@@ -190,27 +194,26 @@ def get_settings(settings_filename="settings.ini"):
             shutil.copyfile(file_to_copy_path, settings_filename)
             print("\nINFO: Settings file not found, so default 'settings.ini' file created. You can use it going forward to change more advanced settings if you want.")
             input("\nPress Enter to continue...")
-    
+
     check_settings_file()
     # Try to get settings file, if fails, use default settings
     try:
         settings = get_config(settings_filename)
-        pass
     except:
         settings = get_config(get_assets_file(default_settings_filename))
         print("\nERROR: Could not read settings file. Using default settings instead.")
-        
+
     # If something went wrong and empty settings, will use default settings
     if settings == {}:
         settings = get_config(get_assets_file(default_settings_filename))
         print("\nERROR: Something went wrong reading the settings file. Using default settings instead.")
-        
+
     return settings
 
 # Get API key constants from config file or command line arguments
 def get_api_keys(api_key_filename="api_keys.ini", args=None):
     default_api_key_filename = "api_keys_empty.ini"
-    
+
     # Checks if api_keys.ini file exists, if not create empty one from default
     def check_api_key_file():
         if not os.path.isfile(api_key_filename):
@@ -223,7 +226,7 @@ def get_api_keys(api_key_filename="api_keys.ini", args=None):
 
     # Run check for api_keys.ini file
     check_api_key_file()
-    
+
     # Default values
     openai_key, clipdrop_key, stability_key = '', '', ''
 
@@ -237,7 +240,7 @@ def get_api_keys(api_key_filename="api_keys.ini", args=None):
         print("Config not found, checking for command line arguments.")  # Could not read from config file, will try command-line arguments next
 
     # Checks if any arguments are not None, and uses those values if so
-    if not all(value is None for value in vars(args).values()):
+    if any(value is not None for value in vars(args).values()):
         openai_key = args.openaikey if args.openaikey else openai_key
         clipdrop_key = args.clipdropkey if args.clipdropkey else clipdrop_key
         stability_key = args.stabilitykey if args.stabilitykey else stability_key
@@ -253,33 +256,33 @@ def validate_api_keys(apiKeys, image_platform):
     valid_image_platforms = ["openai", "stability", "clipdrop"]
     image_platform = image_platform.lower()
 
-    if image_platform in valid_image_platforms:
-        if image_platform == "stability" and not apiKeys.stability_key:
-            raise MissingAPIKeyError("No Stability AI API key found.", "Stability AI")
+    if image_platform not in valid_image_platforms:
+        raise InvalidImagePlatformError(
+            'Invalid image platform provided.',
+            image_platform,
+            valid_image_platforms,
+        )
+    if image_platform == "stability" and not apiKeys.stability_key:
+        raise MissingAPIKeyError("No Stability AI API key found.", "Stability AI")
 
-        if image_platform == "clipdrop" and not apiKeys.clipdrop_key:
-            raise MissingAPIKeyError("No ClipDrop API key found.", "ClipDrop")
-
-    else:
-        raise InvalidImagePlatformError(f'Invalid image platform provided.', image_platform, valid_image_platforms)
+    if image_platform == "clipdrop" and not apiKeys.clipdrop_key:
+        raise MissingAPIKeyError("No ClipDrop API key found.", "ClipDrop")
 
 def initialize_api_clients(apiKeys, image_platform):
     if apiKeys.openai_key:
         openai.api_key = apiKeys.openai_key
 
-    if apiKeys.stability_key and image_platform == "stability":
-        stability_api = client.StabilityInference(
-            key=apiKeys.stability_key, # API Key reference.
-            verbose=True, # Print debug messages.
-            engine="stable-diffusion-xl-1024-v0-9", # Set the engine to use for generation.
+    return (
+        client.StabilityInference(
+            key=apiKeys.stability_key,  # API Key reference.
+            verbose=True,  # Print debug messages.
+            engine="stable-diffusion-xl-1024-v0-9",  # Set the engine to use for generation.
             # Available engines: stable-diffusion-xl-1024-v0-9 stable-diffusion-v1 stable-diffusion-v1-5 stable-diffusion-512-v2-0 stable-diffusion-768-v2-0
             # stable-diffusion-512-v2-1 stable-diffusion-768-v2-1 stable-diffusion-xl-beta-v2-2-2 stable-inpainting-v1-0 stable-inpainting-512-v2-0
         )
-    else:
-        stability_api = None
-    
-    # Only need to return stability_api because openai.api_key has global scope
-    return stability_api
+        if apiKeys.stability_key and image_platform == "stability"
+        else None
+    )
 
 
 # =============================================== Functions ================================================
@@ -288,7 +291,9 @@ def initialize_api_clients(apiKeys, image_platform):
 def set_file_path(baseName, outputFolder):
     def get_next_counter():
         # Check existing files in the directory
-        existing_files = glob.glob(os.path.join(outputFolder, baseName + "_" + timestamp + "_*.png"))
+        existing_files = glob.glob(
+            os.path.join(outputFolder, f"{baseName}_{timestamp}_*.png")
+        )
 
         # Get the highest existing counter, if any
         max_counter = 0
@@ -303,18 +308,18 @@ def set_file_path(baseName, outputFolder):
 
     # Generate a timestamp string to append to the file name
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
-    
+
     # If the output folder does not exist, create it
     if not os.path.exists(outputFolder):
         os.makedirs(outputFolder)
-    
+
     # Get the next counter number
     file_counter = get_next_counter()
 
     # Set the file name
-    fileName = baseName + "_" + timestamp + "_" + str(file_counter) + ".png"
+    fileName = f"{baseName}_{timestamp}_{str(file_counter)}.png"
     filePath = os.path.join(outputFolder, fileName)
-    
+
     return filePath, fileName
 
     
@@ -351,15 +356,14 @@ def check_for_update(currentVersion=version, updateReleaseChannel=None, silentCh
                     print(f"This means you have been rate limited by github.com. Please try again in a while.\n")
                 else:
                     print(f"\nError [U-4]: Got an 403 (ratelimit_reached) when attempting to check for update.")
-                return None
-
+            elif silentCheck == False:
+                print(f"Error [U-3]: Got non 200 status code (got: {response.status_code}) when attempting to check for update.\n")
+                print(
+                    "If this keeps happening, you may want to report the issue here: https://github.com/ThioJoe/Full-Stack-AI-Meme-Generator/issues"
+                )
             else:
-                if silentCheck == False:
-                    print(f"Error [U-3]: Got non 200 status code (got: {response.status_code}) when attempting to check for update.\n")
-                    print(f"If this keeps happening, you may want to report the issue here: https://github.com/ThioJoe/Full-Stack-AI-Meme-Generator/issues")
-                else:
-                    print(f"Error [U-3]: Got non 200 status code (got: {response.status_code}) when attempting to check for update.\n")
-                return None
+                print(f"Error [U-3]: Got non 200 status code (got: {response.status_code}) when attempting to check for update.\n")
+            return None
 
         else:
             # assume 200 response (good)
@@ -399,37 +403,31 @@ def check_for_update(currentVersion=version, updateReleaseChannel=None, silentCh
         return None
 
     if parse_version(latestVersion) > parse_version(currentVersion):
-        if isBeta == True:
-            isUpdateAvailable = "beta"
-        else:
-            isUpdateAvailable = True
-
+        isUpdateAvailable = "beta" if isBeta == True else True
         if silentCheck == False:
             print("----------------------------- UPDATE AVAILABLE -------------------------------------------")
             if isBeta == True:
-                print(f" A new beta version is available! To see what's new visit: https://github.com/ThioJoe/Full-Stack-AI-Meme-Generator/releases ")
+                print(
+                    " A new beta version is available! To see what's new visit: https://github.com/ThioJoe/Full-Stack-AI-Meme-Generator/releases "
+                )
             else:
-                print(f" A new version is available! To see what's new visit: https://github.com/ThioJoe/Full-Stack-AI-Meme-Generator/releases ")
+                print(
+                    " A new version is available! To see what's new visit: https://github.com/ThioJoe/Full-Stack-AI-Meme-Generator/releases "
+                )
             print(f"     > Current Version: {currentVersion}")
             print(f"     > Latest Version: {latestVersion}")
             if isBeta == True:
                 print("(To stop receiving beta releases, change the 'release_channel' setting in the config file)")
             print("------------------------------------------------------------------------------------------")
-            
+
         elif silentCheck == True:
             return isUpdateAvailable
 
     elif parse_version(latestVersion) == parse_version(currentVersion):
-        if silentCheck == False:
-            #print(f"\nYou have the latest version: " + currentVersion)
-            pass
         return False
     else:
-        if silentCheck == False:
-            #print("\nNo newer release available - Your Version: " + currentVersion + "    --    Latest Version: " + latestVersion)
-            pass
         return False
-    
+
     return isUpdateAvailable
 
 # Gets the meme text and image prompt from the message sent by the chat bot
@@ -437,24 +435,21 @@ def parse_meme(message):
     # The regex pattern to match
     pattern = r'Meme Text: (\"(.*?)\"|(.*?))\n*\s*Image Prompt: (.*?)$'
 
-    match = re.search(pattern, message, re.DOTALL)
-
-    if match:
-        # If meme text is enclosed in quotes it will be in group 2, otherwise, it will be in group 3.
-        meme_text = match.group(2) if match.group(2) is not None else match.group(3)
-        
-        return {
-            "meme_text": meme_text,
-            "image_prompt": match.group(4)
-        }
-    else:
+    if not (match := re.search(pattern, message, re.DOTALL)):
         return None
+    # If meme text is enclosed in quotes it will be in group 2, otherwise, it will be in group 3.
+    meme_text = match.group(2) if match.group(2) is not None else match.group(3)
+
+    return {
+        "meme_text": meme_text,
+        "image_prompt": match.group(4)
+    }
     
 # Sends the user message to the chat bot and returns the chat bot's response
 def send_and_receive_message(text_model, userMessage, conversationTemp, temperature=0.5):
     # Prepare to send request along with context by appending user message to previous conversation
     conversationTemp.append({"role": "user", "content": userMessage})
-    
+
     print("Sending request to write meme...")
     chatResponse = openai.ChatCompletion.create(
         model=text_model,
@@ -462,15 +457,14 @@ def send_and_receive_message(text_model, userMessage, conversationTemp, temperat
         temperature=temperature
         )
 
-    chatResponseMessage = chatResponse.choices[0].message.content
     chatResponseRole = chatResponse.choices[0].message.role
 
-    return chatResponseMessage
+    return chatResponse.choices[0].message.content
 
 
 def create_meme(image_path, top_text, filePath, fontFile, noFileSave=False, min_scale=0.05, buffer_scale=0.03, font_scale=1):
     print("Creating meme image...")
-    
+
     # Load the image. Can be a path or a file-like object such as IO.BytesIO virtual file
     image = Image.open(image_path)
 
@@ -495,7 +489,7 @@ def create_meme(image_path, top_text, filePath, fontFile, noFileSave=False, min_
             # If the font size is less than the minimum scale, wrap the text
             lines = [words[0]]
             for word in words[1:]:
-                new_line = (lines[-1] + ' ' + word).rstrip()
+                new_line = f'{lines[-1]} {word}'.rstrip()
                 if d.textbbox((0,0), new_line, font=fnt)[2] > image.width - 2 * buffer_size:
                     lines.append(word)
                 else:
@@ -515,7 +509,7 @@ def create_meme(image_path, top_text, filePath, fontFile, noFileSave=False, min_
     d = ImageDraw.Draw(band)
 
     # The midpoint of the width and height of the bounding box
-    text_x = band.width // 2 
+    text_x = band.width // 2
     text_y = band.height // 2
 
     d.multiline_text((text_x, text_y), wrapped_text, font=fnt, fill=(0,0,0,255), anchor="mm", align="center")
@@ -528,11 +522,11 @@ def create_meme(image_path, top_text, filePath, fontFile, noFileSave=False, min_
     if not noFileSave:
         # Save the result to a file
         new_img.save(filePath)
-        
+
     # Return image as virtual file
     virtualMemeFile = io.BytesIO()
     new_img.save(virtualMemeFile, format="PNG")
-    
+
     return virtualMemeFile
     
 
@@ -620,7 +614,7 @@ def generate(
         base_file_name = settings.get('Base_File_Name', base_file_name)
         output_folder = settings.get('Output_Folder', output_folder)
         release_channel = settings.get('Release_Channel', release_channel)
-    
+
     # Parse the arguments
     args = parser.parse_args()
 
@@ -629,7 +623,7 @@ def generate(
         apiKeys = get_api_keys(args=args)
     else:
         apiKeys = ApiKeysTupleClass(openai_key, clipdrop_key, stability_key)
-        
+
     # Validate api keys
     validate_api_keys(apiKeys, image_platform)
     # Initialize api clients. Only get stability_api object back because openai.api_key has global scope
@@ -660,14 +654,14 @@ def generate(
         if not noUserInput:
             input("\nPress Enter to exit...")
         sys.exit()
-    
+
     # Check for updates
     if not noUserInput:
-        if release_channel.lower() == "all" or release_channel.lower() == "stable":
+        if release_channel.lower() in ["all", "stable"]:
             updateAvailable = check_for_update(version, release_channel, silentCheck=False)
             if updateAvailable:
                 input("\nPress Enter to continue...")
-                
+
     # Clear console
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -678,7 +672,7 @@ def generate(
     if noUserInput:
         userEnteredPrompt = user_entered_prompt
         meme_count = meme_count # Use default set in function parameter (1)
-    
+
     # If any arguments are being used (or set to true for store_true arguments), skip the user input and use the arguments or defaults
     else:
         # If no user prompt argument set, get user input for prompt
@@ -689,7 +683,7 @@ def generate(
                 userEnteredPrompt = "anything"
         else:
             userEnteredPrompt = args.userprompt
-        
+
         # If no meme count argument set, get user input for meme count
         if not args.memecount:
             # Set the number of memes to create
@@ -700,7 +694,7 @@ def generate(
                 meme_count = int(userEnteredCount)
         else:
             meme_count = int(args.memecount)
-            
+
     # ----------------------------------------------------------------------------------------------------
 
     def single_meme_generation_loop():
@@ -714,7 +708,7 @@ def generate(
 
         # Print the meme text and image prompt
         print("\n   Meme Text:  " + meme_text)
-        print("   Image Prompt:  " + image_prompt)
+        print(f"   Image Prompt:  {image_prompt}")
 
         # Send image prompt to image generator and get image back (Using DALL·E API)
         print("\nSending image creation request...")
@@ -726,11 +720,11 @@ def generate(
         if not noFileSave:
             # Write the user message, meme text, and image prompt to a log file
             write_log_file(userEnteredPrompt, memeDict, filePath, output_folder, basic_instructions, image_special_instructions, image_platform)
-        
+
         absoluteFilePath = os.path.abspath(filePath)
-        
+
         return {"meme_text": meme_text, "image_prompt": image_prompt, "file_path": absoluteFilePath, "virtual_meme_file": virtualMemeFile, "file_name": fileName}
-    
+
     # ----------------------------------------------------------------------------------------------------
 
     # Create list of dictionaries to hold the results of each meme so that they can be returned by main() if called from command line
@@ -738,7 +732,7 @@ def generate(
 
     # CORE GENERATION LOOPS
     try:
-        
+
         for i in range(meme_count):
             print("\n----------------------------------------------------------------------------------------------------")
             print(f"Generating meme {i+1} of {meme_count}...")
@@ -746,24 +740,24 @@ def generate(
 
             # Add meme info dict to list of meme results
             memeResultsDictsList.append(memeInfoDict)
-            
+
         # Once finished, print output directory path and confirm exit
         print("\n\nFinished. Output directory: " + os.path.abspath(output_folder))
         if not noUserInput:
             input("\nPress Enter to exit...")
-    
+
     except MissingOpenAIKeyError as ox:
         print(f"\n  ERROR:  {ox}")
         if not noUserInput:
             input("\nPress Enter to exit...")
         sys.exit()
-        
+
     except MissingAPIKeyError as ax:
         print(f"\n  ERROR:  {ax}")
         if not noUserInput:
             input("\nPress Enter to exit...")
         sys.exit()
-        
+
     except openai.error.InvalidRequestError as irx:
         print(f"\n  ERROR:  {irx}")
         if "The model" in str(irx) and "does not exist" in str(irx):
@@ -779,13 +773,13 @@ def generate(
         if not noUserInput:
             input("\nPress Enter to exit...")
         sys.exit()
-    
+
     except Exception as ex:
         print(f"\n  ERROR:  An error occurred while generating the meme. Error: {ex}")
         if not noUserInput:
             input("\nPress Enter to exit...")
         sys.exit()
-    
+
     # If called from command line, will return the list of meme results
     return memeResultsDictsList
 
